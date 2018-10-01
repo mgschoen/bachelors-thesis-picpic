@@ -6,7 +6,7 @@
 \usepackage[T1]{fontenc} % sonst geht \hyphenation nicht mit Umlauten
 %\usepackage[latin1]{inputenc} % man kann schreiben äöüß statt "a"o"u"s
 \usepackage[utf8]{inputenc} % wie oben, aber UTF-8 als Encoding statt ISO-8859-1 (latin1)
-\usepackage[ngerman,english]{babel} % deutsche Trennregeln, "Inhaltsverzeichnis" etc.
+\usepackage[ngerman,british]{babel} % deutsche Trennregeln, "Inhaltsverzeichnis" etc.
 %\usepackage{ngerman} % Alternative zum Babel-Paket oben
 \usepackage{mathptmx} % Times-Roman-Schrift (auch für mathematische Formeln)
 
@@ -83,7 +83,7 @@ Verantw. Hochschullehrer: & Prof. Dr. Neil Thurman
 %______________________________________________________________________
 
 \clearpage
-\selectlanguage{english}
+\selectlanguage{british}
 \section*{Abstract}
 
 Short abstract of the work, maximum of 250 words.
@@ -106,7 +106,7 @@ sowie alle benutzten Quellen und Hilfsmittel angegeben habe.
 
 %______________________________________________________________________
 
-\selectlanguage{english}
+\selectlanguage{british}
 \cleardoublepage
 \pagestyle{fancy}
 \pagenumbering{roman} % Römische Seitenzahlen
@@ -132,17 +132,45 @@ sowie alle benutzten Quellen und Hilfsmittel angegeben habe.
 
 \section{Introduction}
 
-Oh Mann, noch \emph{so} viele Seiten zu füllen...\\
-...und wieso muss bei diesem Format so viel auf eine Seite passen!?
+Automated Journalism has gained significant momentum in recent years. Media outlets from all over the world are starting to use software systems based on artificial intelligence to augment or fully automate tasks that were once done by human editors. Whereas lots of research has been invested in automating tasks related to the writing of news articles, with some applications already being used in production\footnote{The best-known application is probably Automated Insight's Wordsmith application that artificially generates stories for customers like the Associated Press.\cite{AssociatedPressAutomatedInsights}}, fewer attention has been paid to the visual components of a written news story. 
+
+This work aims to tackle one specific but very common issue in present-day newsrooms: Written news articles are usually illustrated with a photograph accompanying the story - especially in digital environments such as websites and mobile applications. This happens for a variety of reasons, some of which are outlined in section \ref{TheoryPerception}. Even though time consuming, this task can in many cases be repetitive and tedious for humans, since news stories do not always leave much room for creative image selection: In many cases, the best solution is depicting one of the key actors or central topics of an article.
+
+Nevertheless, even though trivial for humans, this task is highly complex for a machine to solve: Figuring out key aspects of a story and selecting appropriate images (which might in many cases mean showing something closely related to the topic or even symbolising it) is a problem that is hard to define in mathematical terms. This thesis aims to contribute to the automation of this task by presenting a system that makes use of certain features inherent to the domain of written news articles, thereby reducing the complexity of the problem. The proposed system uses keyword extraction to generate an image search query from the plain text of a news story and uses this query string to request an image from an annotated database. The criteria that are used for distinguishing between good and bad search terms are in parts derived from rules followed by journalists in practice.
+
+In order to explore different ways of applying these criteria, the system is designed in a generalised manner so that different query generation mechanisms can be compared to each other and systematically be analysed. As a first insight to the system's performance, several combinations of the above mentioned criteria with varying computational complexity are evaluated statistically regarding the factual correctness of the images they select. This evaluation helps answering the following guiding research questions: In the proposed system, how well do certain term selection criteria improve the factual correctness of image selections? Is there a visible benefit from investing computational power into the training of neural networks or can similar results be achieved with simple statistical calculations?
+
+% TODO Now give an overview what you did and how this thesis is structured
+
+\bigskip
+
+As an introduction to the field, this thesis starts off by reviewing work about the effects of images on news perception as well as on approaches that tackle problems similar to the one discussed here. Following these introductory remarks, a comprehensive overview of the proposed system is given. After a description of the evaluation design applied to measure the system's performance, the evaluation results are presented. A discussion of limitations both in the system itself and the evaluation is followed by concluding remarks on possible answers to the research questions and opportunities for future research.
+
 %______________________________________________________________________
 
 \cleardoublepage
 
-\section{Theoretical Background}
+\section{Related Work}
 
-\subsection{Images and News Perception}
+This section gives an overview of research that has dealt with questions central to the problem examined in this work: Why do news publishers add images to their news articles in the first place? What effects do images have on news perception? And how can machines augment the process of selecting images for a text written in natural language? Section \ref{TheoryPerception} briefly reflects the perception theoretic view on the topic, section \ref{TheoryTech} discusses computer linguistic approaches that have solved similar problems.
 
-\subsection{Related Image Retrieval Approaches}
+\subsection{Images and News Perception} \label{TheoryPerception}
+
+Images can in general be considered as content that improves the quality of a news story. Research has shown that the addition of images enhances the reader's perception in a number of ways. The most significant effect is probably that images help the audience remember the news they read. Reader's recall of an article increases when an image is added, even if it illustrates an abstract topic. \cite[p. 197-199]{David1998NewsNews} Furthermore, recall can be increased when the image content matches the article content. \cite[p. 187-189]{David1998NewsNews} Compared to other media types such as audio or video, images are clearly superior in helping readers recall a story. \cite{Sundar2000MultimediaDownloads}
+
+Other studies show that images generate a higher amount of visual attention for news stories in social media environments \cite{Keib2018PictureNews} - an effect that is clearly of interest for media companies competing in digital environments. But not only do images increase momentary attention: Zillmann finds that under certain circumstances their addition leads to longer reading times and better retrieval of textual information. \cite{Zillmann2001EffectsReports}
+
+In today's news market, media organisations face a number of challenges. Trust in the news is decreasing \cite{Newman2017Reuters2017}, and so have earnings from newspaper subscriptions. Many media organisations want to sell their news in a competitive online environment, therefore it is crucial for them to present the articles to the reader in the most attractive way possible. As seen above, adding appropriate images to news articles can play a great role in that matter.
+
+However, one needs to be aware of the challenges the task of automating image selection incorporates - not only in a technical sense, but also in terms of news perception. Images play an important part in framing processes that are hard to capture with the means of image retrieval. A good example for the power of pictures is Ben-Porath's experiment from the aftermath of Hurricane Kathrina that showed that "the mere inclusion of victims’ pictures in a news story lessened the perception of governmental responsibility among white respondents" \cite[p. 482]{Ben-Porath2010NewsKatrina}. Seeing black victims on a photograph alone had led more white readers in the experiment to forget that the humanitarian crisis following the hurricane was also caused by the US government's hesitant reaction.
+
+Furthermore, when accompanying stories about controversial issues, images seem to have a significant effect on long-term perception. Zillmann found that ten days after reading about a contested topic, reader's opinions varied depending on the photograph they saw along with the story - an effect that did not occur immediately after reading the text that presented both sides. \cite{Zillmann1999EffectsPerception}
+
+These findings show that it is important to implement some kind of human supervision when automating work on the news. Even though this thesis will propose a system that can act autonomously, it should be regarded as an assisting tool for editors. The news are a powerful and manipulative instrument, and this system is not designed to account for all their effects. Nevertheless, selecting images for news articles with the assistance of such a system can increase editorial productivity considerably and therefore be of great benefit for media companies.
+
+\subsection{Related Image Retrieval Approaches} \label{TheoryTech}
+
+xxx
 
 %______________________________________________________________________
 
