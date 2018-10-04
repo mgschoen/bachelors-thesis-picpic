@@ -253,9 +253,23 @@ Moreover, since the combination of an article and its associated image does not 
   \label{fig:picpic-scraper}
 \end{figure}
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+The data set used for both training and evaluation of the system consists of two corpora. All images selected by the system are drawn from a large corpus published by the image agency \emph{Getty Images}. A collection of news articles was downloaded from the \emph{BBC News} website \cite{BBCBBCNews}.
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+Getty is particularly popular among media and news organisations worldwide and offers comprehensive coverage of contemporary news incidents, historical photography as well as stock photography. Using this corpus is therefore very close to a real-world application. Getty offers access to its image collection through an open web interface called "Getty Images API" \cite{GettyImagesAPIOverview} that is - with certain limitations - free to use. Besides this practical reason, Getty Images was chosen because it covers the whole range of possible images for news articles, from pictures of current events to symbolic pictures that illustrate abstract topics. From a developer's perspective, using the Getty API makes sense because it offers programmatic access to structured data ready to use and can be regarded as one instance of an arbitrary image database.
+
+When news organisations publish an article, image meta data is usually not included. Knowing this meta data, however, is crucial for the proposed machine to learn from the selections human editors make, as will be seen in Section \ref{SystemTrain}. The challenge in collecting the article corpus was hence to find news articles that do not only contain an image by Getty but do additionally allow a conclusion about the original entry in Getty's database. It was found that many articles on the \emph{BBC News} website \cite{BBCBBCNews} do in fact expose the original IDs of the embedded Getty images via image URLs in the HTML documents. For example, in the following image URL
+
+\begin{lstlisting}
+_102007079_gettyimages-3360467.jpg
+\end{lstlisting}
+
+\noindent the Getty ID is \lstinline{3360467}. Likewise, BBC News is an applicable source with regards to contents: The website offers a vast collection of typical news articles every day. It focuses on reporting current events in a short and informative way and aims at a broad audience without a special interest. It publishes reports from all over the world and from many different topics, thereby closely resembling the coverage Getty offers.
+
+With this knowledge in mind, a scraping application was designed that requests all articles from the BBC News website in a periodic fashion, stores them locally, checks for each article whether either the preview image or the first image in the article (i. e.  the lead image) exposes the original Getty ID, and if so requests the image meta data from the Getty API as well. The lead image restriction was imposed because on the BBC News website these are the images that come closest to what the proposed application is intended to select: One image that conveys the core message of the article.
+
+The exemplified scraping work flow in Figure \ref{fig:picpic-scraper} shows that a third source was added: \emph{Thomson Reuters Open Calais} \cite{ThomsonReutersOpenCalais} is a web service that identifies persons, companies, events, products and many other entities in an unstructured text. By submitting the article text to Open Calais, some semantic information about the occurring entities could be stored alongside the plain article. More details on how Open Calais was used to improve the machine learning approach of this system will be presented in Sections \ref{SystemPreprocessCalais} and \ref{SystemClassificationML}.
+
+The scraping application was deployed on 14 June 2018 and run each day on 9 a.m., 4 p.m. and 9 p.m. UTC. By 4 October 2018 it has collected 18,830 articles with their associated Open Calais entity tags. 1,578 of these articles contain a lead image that exposes the Getty ID, resulting in a set of training data consisting of approximately 500,000 terms and their associated features.
 
 \subsection{Preprocessing an Article} \label{SystemPreprocess}
 \subsubsection{Features of a Term} \label{SystemPreprocessFeatures}
@@ -309,6 +323,8 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod 
 \section{Conclusion}
 
 %______________________________________________________________________
+
+\iffalse
 
 % Der Befehl \cleardoublepage erscheint nur vor \section, nicht vor
 % den "kleineren" Gliederungsbefehlen wie \subsection!
@@ -374,6 +390,8 @@ Diese Überschrift erscheint fettgedruckt am Anfang des Absatzes.
 \subsubsection{Was Sie nicht wissen wollten}
 
 Text text textextext\footnote{Oder so ähnlich}.
+
+\fi
 
 %\_____________________________________________________________________
 
