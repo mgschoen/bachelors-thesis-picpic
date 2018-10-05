@@ -9,7 +9,9 @@
 \usepackage[ngerman,british]{babel} % deutsche Trennregeln, "Inhaltsverzeichnis" etc.
 %\usepackage{ngerman} % Alternative zum Babel-Paket oben
 \usepackage{mathptmx} % Times-Roman-Schrift (auch für mathematische Formeln)
-\usepackage{listings}
+\usepackage{multicol} % Mehrspaltigkeit im Anhang
+\usepackage{hyphenat} % Um Worttrennungen unterdrücken zu können
+\usepackage{pbox}
 
 % Zum Setzen von URLs
 \usepackage{color}
@@ -52,9 +54,20 @@
 \setlength{\textwidth}{15cm}
 \addtolength{\textheight}{34mm}
 
-% Listings formatieren
+% Listings
+\usepackage{listings}
 \lstset{basicstyle=\ttfamily\color{blue}}
 
+% Captions
+\usepackage{caption}
+\captionsetup{skip=5pt}
+
+% \paragraph formatting
+\usepackage{titlesec}
+\titlespacing{\paragraph}{0pt}{5pt}{5pt}
+
+% url formatting
+\urlstyle{same}
 %______________________________________________________________________
 
 \begin{document}
@@ -132,7 +145,7 @@ sowie alle benutzten Quellen und Hilfsmittel angegeben habe.
 \setcounter{page}{1}
 % Geändertes Format für Seitenränder, arabische Seitenzahlen
 \fancyhead[LE,RO]{\rightmark}
-\fancyhead[LO,RE]{\leftmark}
+%\fancyhead[LO,RE]{\leftmark}
 \fancyfoot[LE,RO]{\thepage}
 
 \section{Introduction}
@@ -144,8 +157,6 @@ This work aims to tackle one specific but very common issue in present-day newsr
 Nevertheless, even though trivial for humans, this task is highly complex for a machine to solve: Figuring out key aspects of a story and selecting appropriate images (which might in many cases mean showing something closely related to the topic or even symbolising it) is a problem that is hard to define in mathematical terms. This thesis aims to contribute to the automation of this task by presenting a system that makes use of certain features inherent to the domain of written news articles, thereby reducing the complexity of the problem. The proposed system uses keyword extraction to generate an image search query from the plain text of a news story and uses this query string to request an image from an annotated database. The criteria that are used for distinguishing between good and bad search terms are in parts derived from rules followed by journalists in practice.
 
 In order to explore different ways of applying these criteria, the system is designed in a generalised manner so that different query generation mechanisms can be compared to each other and systematically be analysed. As a first insight to the system's performance, several combinations of the above mentioned criteria with varying computational complexity are evaluated statistically regarding the factual correctness of the images they select. This evaluation helps answering the following guiding research questions: In the proposed system, how well do certain term selection criteria improve the factual correctness of image selections? Is there a visible benefit from investing computational power into the training of neural networks or can similar results be achieved with simple statistical calculations?
-
-% TODO Now give an overview what you did and how this thesis is structured
 
 \bigskip
 
@@ -211,22 +222,24 @@ There is a lot of previous work from the field of natural language processing th
 
 \section{Proposed System} \label{System}
 
+\begin{figure}[h]
+  %% Datei auf ganze Breite des Texts vergrößert
+  \includegraphics[width=\columnwidth]{picpic-overview.png}
+  \caption{Outline of the image selection procedure}
+  \label{fig:picpic-overview}
+\end{figure}
+
 This section will outline the architecture and central ideas of the system proposed here as well as components related to it. Section \ref{SystemOverview} will give an overview of the basic idea, all components and their basic functionality. For the system to work, a set of news articles and some associated data was collected from several online sources. The reasons and the exact procedure are described in Section \ref{SystemCorpus}. In order to process the content of an article in a meaningful way, the plain text has to be turned into a list of terms that have certain characteristics. The necessary steps are subsumed in a \emph{preprocessor} component that is described in Section \ref{SystemPreprocess}, along with an explanation of the fields that characterise a term, called \emph{term features}.
 
 Identifying the terms that serve as keywords involves learning from real-world data in most of the approaches examined here. Since there exist no data sets for this specific task, training data had to be generated first before training the neural networks. All the steps related to the training of neural networks are summed up in Section \ref{SystemTrain}.
 
 The actual keyword extraction procedure was defined as a classification task in this thesis. This is performed either with the help of the pre-trained neural networks (referred to as the \emph{machine learning approach} below) or with a simple statistical calculation (\emph{statistical approach}). Both approaches are explained in detail in Section \ref{SystemClassification}. Lastly, the extracted keywords have to be compiled into an image search query that is then sent to the image database. This final step is detailed in Section \ref{SystemQuery}.
 
-Some additional remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{BeligaKeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best describes the subject of the document. This means that all the approaches presented here are meant to prefer concrete terms referring to a visible entity over abstract terms. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
+The complete system proposed here has been implemented for research reasons. The implementation is written in JavaScript running in a Node.js environment. The original source code can be found on the attached CD or as an open source project on the web (see Appendix \ref{AppendixCode} for a detailed description).
+
+Before turning to the actual description of the system, some remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{BeligaKeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best describes the subject of the document. This means that all the approaches presented here are meant to prefer concrete terms referring to a visible entity over abstract terms. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
 
 \subsection{System Overview} \label{SystemOverview}
-
-\begin{figure}[t]
-  %% Datei auf ganze Breite des Texts vergrößert
-  \includegraphics[width=\columnwidth]{picpic-overview.png}
-  \caption{Outline of the image selection procedure}
-  \label{fig:picpic-overview}
-\end{figure}
 
 The basic idea of the system is to take a written news article as an input, extract from it the words that are most likely to return an appropriate image when fed into a news image database, request an image with this query string and return the image. This process involves several steps that are detailed below. Figure \ref{fig:picpic-overview} illustrates the key stages of this procedure.
 
@@ -272,12 +285,104 @@ The exemplified scraping work flow in Figure \ref{fig:picpic-scraper} shows that
 The scraping application was deployed on 14 June 2018 and run each day on 9 a.m., 4 p.m. and 9 p.m. UTC. By 4 October 2018 it has collected 18,830 articles with their associated Open Calais entity tags. 1,578 of these articles contain a lead image that exposes the Getty ID, resulting in a set of training data consisting of approximately 500,000 terms and their associated features.
 
 \subsection{Preprocessing an Article} \label{SystemPreprocess}
+
+Processing an article written in natural language requires bringing structure to the unstructured text. Hence, this system contains a preprocessing component that turns the plain article text into a machine readable list of all the terms that occur in the text. Table \ref{table:term-examples} shows an example output of the preprocessor for a short piece of text. The exact steps the preprocessor performs are explained below.
+
+\begin{table}[h!]
+    \caption{Preprocessing result for "God helps those who help themselves."}
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+         \hline
+         stemmed term & original terms & term frequency & first occurrence  \\
+         \hline
+         god          & God            & 1              & 0                 \\
+         help         & helps, help    & 2              & 0.081             \\
+         god help     & God helps      & 1              & 0                 \\
+         help those who help & helps those who help & 1 & 0.081             \\
+         \hline
+    \end{tabular}
+    \label{table:term-examples}
+\end{table}
+
+\paragraph{Tokenisation.} The first step is to turn the plain text, that is, a sequence of characters, into a sequence of words. This is achieved with a simple tokeniser that splits the original character sequence into substrings at every character that is neither an alphabetic letter, a digit nor an underscore. 
+
+\paragraph{N-Gram Selection.} Since terms do not always consist of just one word, the preprocessor considers compounds consisting of up to four consecutive words as well, so called \emph{n-grams}. This is achieved by sliding a two, three and four word wide window over the previously generated list of words. However, only n-grams that do not overlap with a punctuation character (such as a full stop or a comma) are considered, i. e. n-grams must not exceed the borders of a clause. The n-grams are appended to the list of words.
+
+\paragraph{Stopword Removal.} Many languages have words that convey little meaning on their own and can be left out from analysis, commonly referred to as "stopwords". In English these are mainly pronouns and particles such as "he", "themselves", "by", "when". The complete list of stopwords used in this system can be found in Appendix \ref{AppendixStopwords}. The preprocesor removes all these words from the word list, if they occur individually. Additionally, it removes any n-gram that starts or ends with a stopword, a procedure inspired by Hulth \cite{HulthImprovedKnowledge}.
+
+\paragraph{Stemming.} In order to enable grouping of different inflections of the same word or closely related words, a procedure called "stemming" is applied to the complete word list. This refers to the reduction of words to their linguistic root. Porter's stemming algorithm \cite{Porter1980AnStripping} for the English language has proven to be reliable and effective and was hence chosen for this step.
+
+\paragraph{Feature Assignment} After stemming, the preprocessor characterises each term with a set of features. The choice of features is a crucial part of the whole application, since these are the values the classifiers will use for deciding whether a term is a keyword or not. The features applied in this application are discussed in-depth in the following subsections.
+
 \subsubsection{Features of a Term} \label{SystemPreprocessFeatures}
+
+After the list of stemmed terms is assembled, many terms will occur more than once. Even though a simple measure, the frequency of a word does at least give some evidence about its importance for the text - an assumption fundamental to linguistic measures such as \emph{tf*idf} \cite{Salton1988Term-weightingRetrieval}. Manual benchmarks have largely confirmed this assumption for the BBC corpus on hand, which is why \textbf{term frequency} was included as the first, most basic feature for each term. The preprocessor eliminates duplicate words in the list by combining them to one list entry. It starts off by assigning a term frequency of 1 to each term and increments this count for each duplicate term it detects.
+
+The most powerful term characteristic the manual benchmarks have revealed is the relative position at which a term occurs for the first time. The earlier a term is mentioned, the more important it seems to be for the story. This finding is not surprising, considering one of the basic writing techniques journalists use for presenting hard news: "placing the most important information at the beginning of the story, thus circumventing the reader's decision whether to continue or stop the reception." \cite[p. 501]{Pottker2003NewsAppear} This convention, commonly referred to as the "inverted pyramid" \cite[ibd.]{Pottker2003NewsAppear}, results in a decreasing amount of relevance over the course of a typical news article. Combined with term frequency, the \textbf{first occurrence} of a term rendered sufficiently good results for the statistical approach to be based on solely these two measures (see Section \ref{SystemClassificationStat}). In technical terms, this feature is implemented by searching the plain article text for the respective term and measuring the distance to the first character of the text relative to the total number of characters, i. e. a value of 0 refers to the first character in the article and 1 refers to the last.
+
+Manual benchmarks were carried out for two other linguistic features, but the results were rather discouraging. A \textbf{part-of-speech} lookup in the WordNet database \cite{Fellbaum1998WordNet:Database} resulted in a 5-dimensional vector representing the number of nouns, verbs, adjectives, adverbs and other words in a term but did not reveal any pattern linked to image keywords in the benchmarks. It was therefore left out from this proposal. A feature called \textbf{paragraph type} was designed as a 4-dimensional vector that represents the number of times a term occurs in the headline, sub headlines, list items and regular paragraphs. Even though it seems likely that keywords occur in headlines and sub headlines, adding this feature actually blurred the results. BBC News uses sub headlines particularly often for inserting additional items into the article text that are not directly related, thus many words appeared to be keywords that were unrelated to the topic. All in all, the complications with this feature were more substantial than the benefits, which is why it was chosen to drop it.
+
 \subsubsection{Enhancing Preprocessing with Semantic Tagging} \label{SystemPreprocessCalais}
+
+One of the key difficulties in preprocessing the articles for term classification was the correct aggregation of terms that refer to one and the same thing. Consider for example the fictitious person "Jane Smith" who acts as a lawyer in an article: This person could be referred to with a range of different terms such as "Jane Smith", "Ms Smith", "Jane", "the lawyer", "the attorney", "the procurator", "lawyer Jane Smith" or simply "she". Some of these terms could be captured with naive approaches such as reacting to the keywords "Ms", "Mrs" and "Mr" or integrating sub terms into enclosing terms (e. g. "Jane" into "Jane Smith"). But never would suchlike approaches encompass all possible mentions.
+
+It was therefore decided to enhance the preprocessing component with the automated semantic tagging system \emph{Open Calais}. Open Calais is a "web service that attaches intelligent metadata-tags to [...] unstructured content" \cite[p. 1]{ThomsonReuters2018ThomsonGuide}. The service offered by the news agency \emph{Thomson Reuters} processes natural language with an engine based on statistics, machine learning and other heuristics, and is free to use. The tags it assigns include the overall topics of a text, entities occurring in the text and relations between these entities. Entities can be persons, companies, organisations, countries, events and many more. The proposed system only makes use of Open Calais' entity detection, ignoring topics and relations.
+
+\begin{table}[ht]
+    \caption{Example for Open Calais entity detection}
+    \centering
+    \begin{tabular}{l p{10cm}}
+        Input text: & \nohyphens{\emph{"\underline{Marty Balin} - \underline{the co-founder} of the psychedelic rock band \underline{Jefferson Airplane} - has died aged 76, \underline{his} family and publicist say. They did not specify the cause of death of \underline{the US musician}."}} \bigskip \\
+        
+        Detections: & \begin{tabular}{|l|l|l|}
+         \hline
+         \textbf{entity name} & \textbf{exact terms}        & \textbf{entity type}       \\
+         \hline
+         United States      & US                            & Country           \\
+         \hline
+         Jefferson Airplane & Jefferson Airplane            & MusicGroup        \\
+         \hline
+         Marty Balin        & \pbox{50cm}{\vspace{.2\baselineskip}Marty Balin\\the co-founder\\his\\the US musician\vspace{.3\baselineskip}} & Person            \\
+         \hline
+         co-founder & co-founder & Position \\
+         \hline
+         US musician & US musician & Position \\
+         \hline
+    \end{tabular}
+    \end{tabular}
+    \label{table:calais-example}
+\end{table}
+
+Adding this information to the system enables term aggregation way beyond the simple stemming explained above. As seen in Table \ref{table:calais-example}, Open Calais detects even small references to entities that consist of just one pronoun. This has three major benefits: Firstly, it enables a more detailed elimination of duplicate terms in the list, since each term that is detected as belonging to an entity can be merged with all other terms belonging to the same entity. Secondly, by exposing an entity name, Open Calais offers a way of detecting which occurrence of the term actually describes the entity in the most common fashion (and is hence best for using in the search term). And lastly, it enables a more precise specification of term frequency, counting not only direct mentions of an entity, but also paraphrased references to it.
+
+Thomson Reuters does not disclose the exact methods Open Calais uses, but it clearly states that machine learning is involved \cite{ThomsonReuters2018ThomsonGuide}. This is at odds with the definition of the statistical approach in the presented system (see Section \ref{SystemClassificationStat}), which is why the additional aggregation described above is only applied in the machine learning approaches.
+
+\bigskip
+
+Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, an optional term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
+
+\begin{table}[b]
+    \caption{Entity categories for the terms in Table \ref{table:calais-example}}
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{entity name} & \textbf{entity type} & \textbf{entity category} \\
+        \hline
+        United States & Country & Location \\
+        Jefferson Airplane & MusicGroup & HumanProtagonist \\
+        Marty Balin & Person & HumanProtagonist \\
+        co-founder & Position & Position \\
+        US musician & Position & Position \\
+        \hline 
+    \end{tabular}
+    \label{table:entcat-example}
+\end{table}
+
+The actual benefit of adding these labels to the list of terms was not obvious in the manual benchmarks conducted before the implementation. However, their overall positive - yet not very strong - effect became visible in the evaluation of the implemented system that will be presented in Section \ref{Eval}. It remains to examine whether the information extracted by Open Calais can be used in a more advantageous manner than in this proposal. Some ideas towards deeper exploitation of semantic tagging can be found in Sections \ref{Limits} and \ref{Conclusion}.
 
 \subsection{Training Neural Networks} \label{SystemTrain}
 
-\begin{figure}[t]
+\begin{figure}[h]
   %% Datei auf ganze Breite des Texts vergrößert
   \includegraphics[width=\columnwidth]{picpic-training.png}
   \caption{Outline of the training pipeline}
@@ -310,17 +415,17 @@ The scraping application was deployed on 14 June 2018 and run each day on 9 a.m.
 
 \cleardoublepage
 
-\section{Limitations}
+\section{Limitations} \label{Limits}
 
-\subsection{System Limitations}
+\subsection{System Limitations} \label{LimitsSystem}
 
-\subsection{Research Design Limitations}
+\subsection{Research Design Limitations} \label{LimitsEval}
 
 %______________________________________________________________________
 
 \cleardoublepage
 
-\section{Conclusion}
+\section{Conclusion} \label{Conclusion}
 
 %______________________________________________________________________
 
@@ -392,6 +497,73 @@ Diese Überschrift erscheint fettgedruckt am Anfang des Absatzes.
 Text text textextext\footnote{Oder so ähnlich}.
 
 \fi
+
+%\_____________________________________________________________________
+
+\cleardoublepage
+\begin{appendix}
+
+\section{Source Code} \label{AppendixCode}
+
+The proposed system has been implemented in JavaScript for Node.js for research reasons. It consists of four open source projects that can either be found on the CD attached to the printed version of this thesis or under the links provided below.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|c|p{4.5cm}|c|}
+        \hline
+        \textbf{Project Name} & \textbf{Description} & \textbf{URL} \\
+        \hline
+        gettygetter & Scraping application for collecting data from BBC News, Getty Images and Open Calais & \url{https://github.com/mgschoen/gettygetter} \\
+        \hline
+        picpic-core & Collection of tools for preprocessing, keyword extraction and training of neural networks & \url{https://github.com/mgschoen/picpic-core} \\
+        \hline
+        picpic-api & Public REST interface that applies the image selection pipeline to the corpus collected with gettygetter & \url{https://github.com/mgschoen/picpic-api} \\
+        \hline
+        picpic-explorer & Statically served web frontend for interacting with picpic-api & \url{https://github.com/mgschoen/picpic-explorer} \\
+        \hline
+    \end{tabular}
+    \label{table:source-code}
+\end{table}
+
+\clearpage
+
+\section{List of Stopwords} \label{AppendixStopwords}
+
+\emph{The character "," in the following list denotes a word separator.}
+
+\bigskip
+
+\noindent about, above, after, again, all, also, am, an, and, another, any, are, as, at, be, because, been, before, being, below, between, both, but, by, came, can, cannot, come, could, did, do, does, doing, during, each, few, for, from, further, get, got, has, had, he, have, her, here, him, himself, his, how, if, in, into, is, it, its, itself, like, make, many, me, might, more, most, much, must, my, myself, never, new, now, of, on, only, or, other, our, ours, ourselves, out, over, own, said, same, see, she, should, since, so, some, still, such, take, than, that, the, their, theirs, them, themselves, then, there, these, they, this, those, through, to, too, under, until, up, very, was, way, we, well, were, what, where, when, which, while, who, whom, with, would, why, you, your, yours, yourself, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z, \$, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, \_
+
+\clearpage
+
+\section{Grouping of Open Calais Entity Types} \label{AppendixEntcats}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|c|p{10cm}|}
+        \hline
+        \textbf{Group}          & \textbf{Associated Entity Types} \\
+        \hline
+        Event                   & \nohyphens{Anniversary, Date, EntertainmentAwardEvent, Holiday, PoliticalEvent, SportsEvent, SportsGame, SportsLeague, TVShow} \\
+        \hline
+        HumanProtagonist        & Editor, Journalist, MusicGroup, Person \\
+        \hline
+        OrganizationProtagonist & Company, Organization \\
+        \hline
+        Position                & Position \\
+        \hline
+        Location                & \nohyphens{City, Continent, Country, Facility, NaturalFeature, ProvinceOrState, Region} \\
+        \hline
+        Product                 & \nohyphens{Movie, MusicAlbum, OperatingSystem, PharmaceuticalDrug, Product, ProgrammingLanguage, PublishedMedium, RadioProgram, RadioStation, Technology, TVShow, TVStation} \\
+        \hline
+        Other                   & \nohyphens{EmailAddress, FaxNumber, IndustryTerm, MarketIndex, MedicalCondition, MedicalTreatment, PhoneNumber, URL} \\
+        \hline
+    \end{tabular}
+    \label{table:entity-groups}
+\end{table}
+
+\end{appendix}
 
 %\_____________________________________________________________________
 
