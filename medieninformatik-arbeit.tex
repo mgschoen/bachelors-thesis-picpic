@@ -237,13 +237,13 @@ The actual keyword extraction procedure was defined as a classification task in 
 
 The complete system proposed here has been implemented for research reasons. The implementation is written in JavaScript running in a Node.js environment. The original source code can be found on the attached CD or as an open source project on the web (see Appendix \ref{AppendixCode} for a detailed description).
 
-Before turning to the actual description of the system, some remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{BeligaKeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best describes the subject of the document. This means that all the approaches presented here are meant to prefer concrete terms referring to a visible entity over abstract terms. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
+Before turning to the actual description of the system, some remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{BeligaKeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best illustrates the document. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
 
 \subsection{System Overview} \label{SystemOverview}
 
 The basic idea of the system is to take a written news article as an input, extract from it the words that are most likely to return an appropriate image when fed into a news image database, request an image with this query string and return the image. This process involves several steps that are detailed below. Figure \ref{fig:picpic-overview} illustrates the key stages of this procedure.
 
-Before the actual keyword extraction takes place, an \emph{article preprocessor} turns the plain text into a machine readable list of terms. A term can either be a single word or a compound consisting of up to four words. Each term is characterised by three features: term frequency, first occurrence and entity type. Details on the features can be found in Section \ref{SystemPreprocessFeatures} below.
+Before the actual keyword extraction takes place, an \emph{article preprocessor} turns the plain text into a machine readable list of terms. A term can either be a single word or a compound consisting of up to four words. Each term is characterised by three features: term frequency, first occurrence and entity type. Details on the features can be found in Sections \ref{SystemPreprocessFeatures} and \ref{SystemPreprocessCalais} below.
 
 The next stage is the \emph{term classification} stage. In this stage, each term gets assigned a predicted probability value \lstinline|p| that describes the likeliness of this term being a good image search term. The classifier component uses the features assigned in the preprocessing stage for judging on the quality of each term. It returns the same list of terms, now with probabilities assigned and sorted descending by \lstinline{p}. The exact procedure after which the classifier decides what is a good search term and what is not is interchangeable: This component is designed in a generalised manner, so that different classification methods can be plugged in.
 
@@ -270,15 +270,15 @@ The data set used for both training and evaluation of the system consists of two
 
 Getty is particularly popular among media and news organisations worldwide and offers comprehensive coverage of contemporary news incidents, historical photography as well as stock photography. Using this corpus is therefore very close to a real-world application. Getty offers access to its image collection through an open web interface called "Getty Images API" \cite{GettyImagesAPIOverview} that is - with certain limitations - free to use. Besides this practical reason, Getty Images was chosen because it covers the whole range of possible images for news articles, from pictures of current events to symbolic pictures that illustrate abstract topics. From a developer's perspective, using the Getty API makes sense because it offers programmatic access to structured data ready to use and can be regarded as one instance of an arbitrary image database.
 
-When news organisations publish an article, image meta data is usually not included. Knowing this meta data, however, is crucial for the proposed machine to learn from the selections human editors make, as will be seen in Section \ref{SystemTrain}. The challenge in collecting the article corpus was hence to find news articles that do not only contain an image by Getty but do additionally allow a conclusion about the original entry in Getty's database. It was found that many articles on the \emph{BBC News} website \cite{BBCBBCNews} do in fact expose the original IDs of the embedded Getty images via image URLs in the HTML documents. For example, in the following image URL
+When news organisations publish an article, image meta data is usually not included. Knowing this meta data, however, is crucial for the proposed machine to learn from the selections human editors make, as will be seen in Section \ref{SystemTrain}. The challenge in collecting the article corpus was hence to find news articles that do not only contain an image by Getty but do additionally allow a conclusion about the original entry in Getty's database. It was found that many articles on the \emph{BBC News} website \cite{BBCBBCNews} do in fact expose the original IDs of the embedded Getty images via image file names in the HTML documents. For example, in the following file name
 
 \begin{lstlisting}
 _102007079_gettyimages-3360467.jpg
 \end{lstlisting}
 
-\noindent the Getty ID is \lstinline{3360467}. Likewise, BBC News is an applicable source with regards to contents: The website offers a vast collection of typical news articles every day. It focuses on reporting current events in a short and informative way and aims at a broad audience without a special interest. It publishes reports from all over the world and from many different topics, thereby closely resembling the coverage Getty offers.
+\noindent the Getty ID is \lstinline{3360467}. Likewise, BBC News is an applicable source with regards to contents: The website publishes a vast collection of typical news articles every day. It focuses on reporting current events in a short and informative way and aims at a broad audience without a special interest. It features reports from all over the world and from many different topics, thereby closely resembling the coverage Getty offers.
 
-With this knowledge in mind, a scraping application was designed that requests all articles from the BBC News website in a periodic fashion, stores them locally, checks for each article whether either the preview image or the first image in the article (i. e.  the lead image) exposes the original Getty ID, and if so requests the image meta data from the Getty API as well. The lead image restriction was imposed because on the BBC News website these are the images that come closest to what the proposed application is intended to select: One image that conveys the core message of the article.
+Based on these findings, a scraping application was designed that requests all articles from the BBC News website in a periodic fashion, stores them locally, checks for each article whether either the preview image or the first image in the article (i. e.  the lead image) exposes the original Getty ID, and if so requests the image meta data from the Getty API as well. The lead image restriction was imposed because on the BBC News website these are the images that come closest to what the proposed application is intended to select: One image that conveys the core message of the article.
 
 The exemplified scraping work flow in Figure \ref{fig:picpic-scraper} shows that a third source was added: \emph{Thomson Reuters Open Calais} \cite{ThomsonReutersOpenCalais} is a web service that identifies persons, companies, events, products and many other entities in an unstructured text. By submitting the article text to Open Calais, some semantic information about the occurring entities could be stored alongside the plain article. More details on how Open Calais was used to improve the machine learning approach of this system will be presented in Sections \ref{SystemPreprocessCalais} and \ref{SystemClassificationML}.
 
@@ -320,7 +320,7 @@ After the list of stemmed terms is assembled, many terms will occur more than on
 
 The most powerful term characteristic the manual benchmarks have revealed is the relative position at which a term occurs for the first time. The earlier a term is mentioned, the more important it seems to be for the story. This finding is not surprising, considering one of the basic writing techniques journalists use for presenting hard news: "placing the most important information at the beginning of the story, thus circumventing the reader's decision whether to continue or stop the reception." \cite[p. 501]{Pottker2003NewsAppear} This convention, commonly referred to as the "inverted pyramid" \cite[ibd.]{Pottker2003NewsAppear}, results in a decreasing amount of relevance over the course of a typical news article. Combined with term frequency, the \textbf{first occurrence} of a term rendered sufficiently good results for the statistical approach to be based on solely these two measures (see Section \ref{SystemClassificationStat}). In technical terms, this feature is implemented by searching the plain article text for the respective term and measuring the distance to the first character of the text relative to the total number of characters, i. e. a value of 0 refers to the first character in the article and 1 refers to the last.
 
-Manual benchmarks were carried out for two other linguistic features, but the results were rather discouraging. A \textbf{part-of-speech} lookup in the WordNet database \cite{Fellbaum1998WordNet:Database} resulted in a 5-dimensional vector representing the number of nouns, verbs, adjectives, adverbs and other words in a term but did not reveal any pattern linked to image keywords in the benchmarks. It was therefore left out from this proposal. A feature called \textbf{paragraph type} was designed as a 4-dimensional vector that represents the number of times a term occurs in the headline, sub headlines, list items and regular paragraphs. Even though it seems likely that keywords occur in headlines and sub headlines, adding this feature actually blurred the results. BBC News uses sub headlines particularly often for inserting additional items into the article text that are not directly related, thus many words appeared to be keywords that were unrelated to the topic. All in all, the complications with this feature were more substantial than the benefits, which is why it was chosen to drop it.
+Manual benchmarks were carried out for two other linguistic features, but the results were rather discouraging. A \textbf{part-of-speech} lookup in the WordNet database \cite{Fellbaum1998WordNet:Database} resulted in a 5-dimensional vector representing the number of nouns, verbs, adjectives, adverbs and other words in a term but did not reveal any pattern linked to image keywords in the benchmarks. It was therefore left out from this proposal. A feature called \textbf{paragraph type} was designed as a 4-dimensional vector that represents the number of times a term occurs in the headline, sub headlines, list items and regular paragraphs. Even though it seems likely that keywords occur in headlines and sub headlines, adding this feature actually blurred the results. BBC News uses sub headlines particularly often for inserting additional items into the article text that are not directly related, thus many words appeared to be keywords even though they were unrelated to the topic. All in all, the complications with this feature were outweighing the benefits, which is why it was chosen to drop it.
 
 \subsubsection{Enhancing Preprocessing with Semantic Tagging} \label{SystemPreprocessCalais}
 
@@ -328,8 +328,8 @@ One of the key difficulties in preprocessing the articles for term classificatio
 
 It was therefore decided to enhance the preprocessing component with the automated semantic tagging system \emph{Open Calais}. Open Calais is a "web service that attaches intelligent metadata-tags to [...] unstructured content" \cite[p. 1]{ThomsonReuters2018ThomsonGuide}. The service offered by the news agency \emph{Thomson Reuters} processes natural language with an engine based on statistics, machine learning and other heuristics, and is free to use. The tags it assigns include the overall topics of a text, entities occurring in the text and relations between these entities. Entities can be persons, companies, organisations, countries, events and many more. The proposed system only makes use of Open Calais' entity detection, ignoring topics and relations.
 
-\begin{table}[ht]
-    \caption{Example for Open Calais entity detection}
+\begin{figure}[ht]
+    \caption{Example for Open Calais entity detection \bigskip}
     \centering
     \begin{tabular}{l p{10cm}}
         Input text: & \nohyphens{\emph{"\underline{Marty Balin} - \underline{the co-founder} of the psychedelic rock band \underline{Jefferson Airplane} - has died aged 76, \underline{his} family and publicist say. They did not specify the cause of death of \underline{the US musician}."}} \bigskip \\
@@ -351,15 +351,15 @@ It was therefore decided to enhance the preprocessing component with the automat
     \end{tabular}
     \end{tabular}
     \label{table:calais-example}
-\end{table}
+\end{figure}
 
-Adding this information to the system enables term aggregation way beyond the simple stemming explained above. As seen in Table \ref{table:calais-example}, Open Calais detects even small references to entities that consist of just one pronoun. This has three major benefits: Firstly, it enables a more detailed elimination of duplicate terms in the list, since each term that is detected as belonging to an entity can be merged with all other terms belonging to the same entity. Secondly, by exposing an entity name, Open Calais offers a way of detecting which occurrence of the term actually describes the entity in the most common fashion (and is hence best for using in the search term). And lastly, it enables a more precise specification of term frequency, counting not only direct mentions of an entity, but also paraphrased references to it.
+Adding this information to the system enables term aggregation way beyond the simple stemming explained above. As seen in Figure \ref{table:calais-example}, Open Calais detects even small references to entities that consist of just one pronoun. This has three major benefits: Firstly, it enables a more detailed elimination of duplicate terms in the list, since each term that is detected as belonging to an entity can be merged with all other terms belonging to the same entity. Secondly, by exposing an entity name, Open Calais offers a way of detecting which occurrence of the term actually describes the entity in the most common fashion (and is hence best for using in the image query). And lastly, it enables a more precise specification of term frequency, counting not only direct mentions of an entity, but also paraphrased references to it.
 
 Thomson Reuters does not disclose the exact methods Open Calais uses, but it clearly states that machine learning is involved \cite{ThomsonReuters2018ThomsonGuide}. This is at odds with the definition of the statistical approach in the presented system (see Section \ref{SystemClassificationStat}), which is why the additional aggregation described above is only applied in the machine learning approaches.
 
 \bigskip
 
-Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, an optional term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
+Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, another term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
 
 \begin{table}[b]
     \caption{Entity categories for the terms in Table \ref{table:calais-example}}
@@ -382,16 +382,97 @@ The actual benefit of adding these labels to the list of terms was not obvious i
 
 \subsection{Training Neural Networks} \label{SystemTrain}
 
-\begin{figure}[h]
+\begin{figure}[t]
   %% Datei auf ganze Breite des Texts vergrößert
   \includegraphics[width=\columnwidth]{picpic-training.png}
   \caption{Outline of the training pipeline}
   \label{fig:picpic-training}
 \end{figure}
 
+\begin{quote}
+    "[L]earning is the process of converting experience into expertise or knowledge."
+    
+    \cite[p. 1]{Ben-David2014UnderstandingAlgorithms}
+\end{quote}
+
+\noindent Learning from real world observations is fundamental to one of the two approaches examined in this work, the machine learning approach. It is hence worth to discuss, which training data is necessary to gain the required knowledge, and how this data is generated in the proposed system. Referring to the quote by Ben-David above, the expertise this system is trying to gain is to distinguish between terms that are suitable for searching an image and terms that are not. So what would be the experience the system should make in order to develop this ability? Strictly speaking, it should learn from what human editors do when searching for an image. The ideal training data for the task at hand would thereby be a set of terms human editors have used for searching an image, united with another set of terms they did not use. It is immediately clear that such data is not readily available. Collecting it would take lots of time, since human editors would have to make thousands of image requests until enough data is available, not to speak of the privacy considerations such a surveillance would imply.
+
+In order to avoid these difficulties and due to time limitations, this system is trying to substitute the missing data with a workaround. This workaround is based on the assumption that any combination of terms that occur in the description of an image would form a query good enough to return at least a similar image from the same database. This is, in a sense, a weak assumption, since there will always be terms in image descriptions that do not strictly set the image apart from unrelated images. But it helps getting as close as possible to actual search terms with the data available form the sources presented in Section \ref{SystemCorpus}.
+
+In practice, the training data is generated from articles that have a Getty image as their lead image on the BBC website, or more precisely articles for which the scraper was able to download additional image meta data from the Getty API. Article text and image meta data are compared and all article terms that also occur in the image description are labelled as "keyword", whereas all other article terms are labelled as "no keyword". This procedure as well as the exact steps taken for training the networks are detailed in the following subsections. Figure \ref{fig:picpic-training} shows a schematic representation of the whole training pipeline.
+
 \subsubsection{Preprocessing an Image for Training} \label{SystemTrainPreprocess}
+
+\begin{figure}[t]
+    \caption{Image meta data example}
+    \centering
+    \def\arraystretch{1.3}
+    \begin{tabular}{l p{10cm}}
+        \textbf{Image:} & \raisebox{-4.3em}[5.5em][5em]{\includegraphics[width=.3\columnwidth]{einstein.jpg}} \\
+        %\hline
+        \textbf{Title:} & Einstein And Wife \\
+        %\hline
+        \textbf{Caption:} & circa 1921:  German-Swiss-American mathematical physicist Professor Albert Einstein (1879 - 1955) with his wife Elsa in Egypt.  (Photo by Topical Press Agency/Getty Images) \\
+        %\hline
+        \textbf{Keywords:} & \nohyphens{1990-1929, Adult, Africa, Black And White, Couple - Relationship, Data, Egypt, German Culture, Germany, Mathematical Symbol, Mathematics, People, Physicist, Science and Technology, Swiss Culture, Wife, Women, Albert Einstein, Elsa Einstein} \\
+    \end{tabular}
+    \label{fig:image-meta-example}
+\end{figure}
+
+\noindent To be able to match the article terms with the terms occurring in the image description, the image meta data has to be preprocessed with a procedure similar to the article preprocessor outlined in Section \ref{SystemPreprocess}. In doing so, a second list of terms is generated, so called image tags, that can then be compared to the article terms. The input data for this image preprocessor component consists of three fields - title, caption and keywords of the image - that have to be treated in two different ways.
+
+\paragraph{Keywords} The Getty Images API provides a list of keywords that describes each image according to topics, content and some technical features such as orientation or colour (see Figure \ref{fig:image-meta-example} for an example). Since most of these keywords represent fixed terms, additional steps such as tokenisation and n-gram selection can be omitted. Except for stemming with Porter's algorithm, no preprocessing is applied to them.
+
+\paragraph{Title and Caption} In addition to the structured list of keywords, the API provides a title (headline) and caption (description) for each image in natural language. In contrast to the keywords, title and caption explicitly describe the people and things depicted on an image. It can be assumed that terms occurring in title and caption are more likely to resemble queries human editors make, which is why it was decided to include them in the list of image tags. The preprocessing steps performed on these two fields are similar to the article preprocessor: Tokenisation, n-gram selection, stopword removal and stemming are applied in the same way as described in Section \ref{SystemPreprocess}, resulting in a list of caption terms.
+
+Both lists are then merged so that the output contains no duplicate terms. The resulting list of image tags is passed on to a training data generator component described in the following section.
+
 \subsubsection{Generating Training Data} \label{SystemTrainGenerate}
+
+\begin{figure}[h]
+    \caption{Example representation of one term as vector in the training data}
+    \centering
+    \includegraphics[width=\columnwidth]{example-training-term.png}
+    \label{fig:example-training-term}
+\end{figure}
+
+\noindent At first, the training data generator component matches the list of article terms with the image tags. It assigns an additional boolean feature \textbf{isKeyword} to each term, with a value of \lstinline{true} for each article term that is also an image tag and \lstinline{false} for all other terms (see the "Matcher" component in Figure \ref{fig:picpic-training}). Subsequently, each term has to be transformed into a vector representing the input layer of a neural network. All feature values are mapped to numbers from the range between 0 and 1, with 0 representing an unactivated neuron and 1 representing a fully activated neuron. An example vector is shown in Figure \ref{fig:example-training-term}. The detailed transformations applied to each feature value are explained below.
+
+\paragraph{Term frequency} This value is normalised with the sigmoid function:
+
+\[
+sig(x) = \frac{1 - e^{-x}}{1 + e^{-x}}
+\]
+
+\noindent Since the lowest possible value for term frequency is 1 (terms with a frequency of 0 would not occur at all), the value is decreased by 1 before applying the sigmoid function. This means that a term frequency of 1 will result in an unactivated neuron ($sig(1-1) = sig(0) = 0$). Sigmoid was chosen because its value increases quickly for natural numbers greater than 1. A term frequency of 4, for example, would result in an activation of $sig(4-1) = sig(3) \approx 0.9052$.
+
+\paragraph{First occurrence} Values for this feature range from 0 to 1 by design and need no normalisation. They are adopted in the term vector unmodified.
+
+\paragraph{Entity category} This feature can take seven different nominal values or no value at all. It is represented as an eight-dimensional vector on its own, where the first value expresses whether this term belongs to an entity or not (\emph{isEntity}) and the other seven values represent the entity categories (Event, HumanProtagonist, OrganizationProtagonist, ...). Figure \ref{fig:example-training-term} illustrates the pattern: If a term does not have an entity category assigned, all eight values are set to 0. If it has a category, \emph{isEntity} and the respective category dimension are set to 1. This representation was chosen because of the assumption that terms belonging to any type of entity might be better suited as search term than terms that do not belong to any entity. Whether this predication holds, is yet to be examined. 
+
+\bigskip
+
+\noindent Finally, one value representing the label is appended to the term vector: If the term was labelled as "keyword", this value is 1, otherwise it is 0.
+
 \subsubsection{Training the Networks} \label{SystemTrainTrain}
+
+\noindent All variations of the machine learning approach examined in this work use pre-trained feedforward neural networks for the classification of terms. Feedforward neural networks were chosen because they provide an easy mechanism to perform simple classifications, such as the task at hand. Since the search terms they predict can only be evaluated by humans looking at the selected images, there is no obvious benefit in remembering previous decisions, as for example recurrent neural networks do. All networks in this work consist of one input layer of varying size, one hidden layer sized proportionate to the input layer and one output layer consisting of two nodes, representing the two classes "keyword" and "no keyword".\footnote{For details on the structure of feedforward neural networks see \cite{Bishop1995NeuralRecognition}.} Varying the type and design of the networks is beyond the scope of this work and remains to be examined in future work. However, the software is designed to incorporate different types of networks in the future.
+
+Four networks were trained for the evaluation in this work. Each of the examined networks uses a different combination of the term features to classify terms as "keyword" or "no keyword". These combinations are:
+
+\vspace{-.5em}
+\begin{itemize}
+    \setlength\itemsep{0em}
+    \item term frequency + first occurrence
+    \item term frequency + entity category
+    \item first occurrence + entity category
+    \item term frequency + first occurrence + entity category
+\end{itemize}
+\vspace{-.5em}
+
+\noindent Note that the combination of features determines the size of the input layer: Depending on which features are included, the term vector (see Section \ref{SystemTrainGenerate}) differs in length, and so does the number of nodes in the input layer.
+
+For each feature combination, a separate set of 100,000 training terms from the BBC News corpus was generated with the procedure explained above. The implementation uses a third-party library (see \cite{BrainJSBrain.js:JavaScript}) for training the networks with the generated data.
 
 \subsection{Term Classification} \label{SystemClassification}
 \subsubsection{Statistics Based Approach} \label{SystemClassificationStat}
