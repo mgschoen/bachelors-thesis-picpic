@@ -84,7 +84,7 @@ Prof.\ Dr.\ Heinrich Hußmann
 \vspace{5cm}
 {\large\textbf{Bachelor's Thesis}}\vspace{.5cm}
 
-{\LARGE Using Keyword Extraction for Image Retrieval in News Articles}\vspace{.3cm}
+{\LARGE Using Keyword Extraction for Image Selection in News Articles}\vspace{.3cm}
 
 {\Large Comparison of Different Approaches}\vspace{1cm}
 
@@ -108,11 +108,10 @@ Short abstract of the work, maximum of 250 words.
 
 \selectlanguage{ngerman}
 \clearpage
-\section*{Aufgabenstellung}
 
-Kopie der Original-Aufgabenstellung
+\section*{Eigenständigkeitserklärung}
 
-\vfill % Sorgt dafür, dass das Folgende an das Seitenende rutscht
+% \vfill % Sorgt dafür, dass das Folgende an das Seitenende rutscht
 
 \noindent Ich erkläre hiermit, dass ich die vorliegende Arbeit
 selbstständig angefertigt, alle Zitate als solche kenntlich gemacht
@@ -359,7 +358,7 @@ Thomson Reuters does not disclose the exact methods Open Calais uses, but it cle
 
 \bigskip
 
-Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, another term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
+Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, another term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). In fact, research has shown that the great majority of image request newspaper journalists make are aimed at named persons, things and locations. \cite[p. 106]{Westman2006ImageContext} Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
 
 \begin{table}[b]
     \caption{Entity categories for the terms in Table \ref{table:calais-example}}
@@ -475,10 +474,60 @@ Four networks were trained for the evaluation in this work. Each of the examined
 For each feature combination, a separate set of 100,000 training terms from the BBC News corpus was generated with the procedure explained above. The implementation uses a third-party library (see \cite{BrainJSBrain.js:JavaScript}) for training the networks with the generated data.
 
 \subsection{Term Classification} \label{SystemClassification}
+
+Having preprocessed the article and trained the neural networks, the system is ready for performing the central step of the whole image selection process: All terms the article preprocessor has identified as keyword candidates are are now classified regarding their suitability as keywords. Instead of assigning an actual class to them, a probability value is calculated for each term. This value expresses the likeliness of the term being an appropriate search term. A probability value of 1 means that the system is 100 percent confident that the considered term is a search term. 0, in turn, means the system is entirely sure that the term is not a search term. Usually, this value does not reach its extrema.
+
+The method used for predicting the probability values is interchangeable. This system compares five different methods: Four variations of neural networks as described in the previous section (referred to as the machine learning approach) and one method based on a simple calculation (the statistical approach). Whilst the neural networks do not reveal the patterns they follow by design, the statistical approach is designed with certain assumptions in mind, all of which are detailed in Section \ref{SystemClassificationStat} below. 
+
+At the end of the classification step, a sorted list of terms descending by their probability values is forwarded to the query generator component.
+
 \subsubsection{Statistics Based Approach} \label{SystemClassificationStat}
+
+After discarding part-of-speech and paragraph type as features, only two features remain for calculating probabilities with statistical measures. The calculation applied is based on two assumptions:
+
+\begin{enumerate}
+    \item The more often a term occurs in an article, the more distinctively it describes its content.
+    \item The earlier a term occurs for the first time, the more central it is for the article.
+\end{enumerate}
+
+\noindent Combining both assumptions, the ideal keyword in this model would be a term that occurs right at the beginning of an article and that is the most frequent term in the article. This is expressed in the following formula:
+
+\[
+p(tf, fo) = \frac{tf}{max(TF)} * (1 - fo)
+\]
+
+\noindent where $tf$ denotes the frequency of a term, $fo$ its first occurrence value, $max(TF)$ the highest term frequency value of all terms in an article and $p$ the probability of this specific term being a keyword. The fraction $\frac{tf}{max(TF)}$ equals 1 when the term under consideration is the most frequent one of the article, in all other cases it is less than 1. The difference $(1 - fo)$ converges towards 1 if $fo$ converges towards 0, i. e. the earlier a term occurs, the closer to 1 this part of the formula gets. The ideal keyword in this model would therefore have a probability value of $\frac{max(TF)}{max(TF)} * (1 - 0) = 1 * 1 = 1$.
+
+What makes this approach stand out from the other approaches is its computational simplicity. The computing time for this basic formula is negligible, making this method exceedingly efficient. On the other hand, this approach involves no kind of semantic understanding of the text. Relying solely on two statistical measures and two strong assumptions makes it prone to miscalculations of seemingly important but redundant terms. Surprisingly, this approach has selected similar terms as the neural networks in many cases. Nevertheless, it was outperformed by some of the networks, as can be seen in the evaluation results in Section \ref{EvalResults}.
+
 \subsubsection{Machine Learning Based Approach} \label{SystemClassificationML}
 
+As most of the details regarding the design of the machine learning approach have been laid out in the previous sections, this section will briefly sum up the key differences to the statistical approach. By design, the machine learning approach is open to find its own patterns in the training data. In contrast to the statistical approach, no preassumptions were made about the features and their connections to keyword probabilities. Furthermore, the machine learning approach follows a more sophisticated preprocessing procedure than the statistical approach that solely relies on simple n-gram selection and stemming. By adding semantic understanding to the preprocessor, real-world entities are grouped to one single term, making these entities stand out more from less meaningful terms. Lastly, an additional feature called "entity category" is introduced in the machine learning approach, representing a rough categorisation of terms in events, different types of protagonists, professional positions, locations, products and other terms.
+
 \subsection{Image Query} \label{SystemQuery}
+
+The last processing step is to turn the ranked list of terms into a query string. Simply choosing the highest ranked term proved to be prone to errors, therefore several additional steps are proposed for this procedure. The observations made when selecting only one term correspond to the findings of Aramini et al.:
+
+\begin{quote}
+"We noted that using a single keyword would result in a too generic query, as it can represent a too generic concept. Furthermore, if we use a combination of two words, rather than only one, we drastically reduce the problem of polysemy. In fact the second word specifies the meaning of the first one, defining the context of the query." \cite[p. 142]{Aramini2015AutomaticImages}
+\end{quote}
+
+For this reason, the proposed system selects the two highest ranked terms by default and concatenates them to a query. However, it was found that queries of more than three words are too specific for the Getty API, resulting in many empty responses. Thus, if the resulting query consists of more than three words, the shorter term is dropped, even if it was ranked higher than the longer term, preserving the highest specificity possible.
+
+Moreover, it was noted that due to the strong distinctive power of the term frequency feature, abbreviations and short forms were in many cases ranked higher than the spelled out terms - which would in turn be more suitable for the query. However, the spelled out terms usually follow shortly after the short forms in the ranking, since they tend to occur earlier. Hence, a simple heuristic is introduced that is meant to replace short forms with the spelled out terms, if they are ranked reasonably high.
+
+\begin{figure}[h]
+    \caption{Example for term replacement during the query generation}
+    \centering
+    \includegraphics[width=\columnwidth]{picpic-querygen.png}
+    \label{fig:example-querygen}
+\end{figure}
+
+Figure \ref{fig:example-querygen} shows this procedure in an exemplified manner: Firstly, a threshold probability value is defined. All terms with probabilities above this threshold are considered appropriate search terms, all others are discarded. After conducting manual benchmarks, the threshold was set to 0.5 for the statistical approach and 0.1 for the machine learning approaches. Then the two highest ranked terms are selected. For each of the selected terms, the query generator checks if there is another appropriate term that fully contains the selected term (called superterm below). In the example, "States" is replaced with its superterm "United States". "flag", in turn, is not replaced, even though "flagship" is a superterm. "flagship" has a probability of 0.13, which is below the defined threshold of 0.5. Finally, the query is generated by concatenating the resulting terms and converting them to lowercase letters. Note that in this example the search term consists of exactly three words. If it were four or more words, the shorter of both terms would be left out from the query. If both terms were of the same length, the second one would be discarded.
+
+Finally, the query is sent to the Getty API, which returns a list of images sorted by their popularity. The most popular image is selected as an illustration for the article. Other options would be to sort the images by date or by "best match", neither of which did appear to render similarly good results in manual tests.
+
+\
 
 %______________________________________________________________________
 
@@ -486,11 +535,128 @@ For each feature combination, a separate set of 100,000 training terms from the 
 
 \section{Evaluation} \label{Eval}
 
+Measuring the performance of a system that automatically selects images for news articles is not trivial. This task raises questions such as: What defines an appropriate image for an article? Is it only appropriate to show things that are mentioned directly in the text? Can an image be inappropriate even though it shows some entity from the text? Can it also be a good choice to select pictures that go beyond the text? What is more, who should judge on the quality of an image selection? Are news readers the best evaluators because they are the ones the news are made for? Or journalists because they have professional criteria and they are used to the selection task? Neither of both?
+
+The evaluation of the system presented here takes a rather cautious approach. Since five different classification methods had to be evaluated, with potentially more to come in the future, the goal was to create a measure as objective as possible that is still applicable with reasonable effort. The experiment conducted for this work focuses merely on the factual correctness of image selections, leaving aside judgements on the journalistic quality of an image as well as considerations about how images could be perceived.
+
+The following subsections give an overview of the evaluation method applied here. Section \ref{EvalFacts} explains the model for factual correctness that was employed in the experiment. Section \ref{EvalDesign} outlines how the experiment was conducted. Finally, experimental results are presented in Section \ref{EvalResults}.
+
 \subsection{Factual Correctness as a Measure for System Performance} \label{EvalFacts}
+
+Research has found that journalists use a variety of criteria for judging on the quality of an image. While it is most important that the image depicts the \emph{right} thing, they also pay heed to, for example, whether the image fits the allocated space (especially on newspaper pages, but also on websites), has certain visual features (good lighting, aesthetic composition), goes well with the article's headline, conveys the right mood and has eye-catching qualities. \cite[p. 108]{Westman2006ImageContext} Some of these criteria can not be applied in the evaluation of a general purpose system like the one at hand. Some others can only be assessed by professional photographers or journalists.
+
+Due to time constraints and for reasons of efficiency, it was decided to focus on the most basic, yet most important criterion employed in practice: \emph{what} the image shows (see Westman et al.'s study on journalist's image search behaviour, \cite{Westman2006ImageContext}). In particular, this evaluation verifies that the content of the selected images is factually correct with regard to the article they are meant to illustrate. This can be seen as the minimum requirement for the system at hand: If the image is not factually correct in the majority of cases, the system can not be regarded as ready for production.
+
+An image in this context is regarded as factually correct in relation to a news article, if one of the following criteria is matched:
+
+\begin{enumerate}
+    \item The image shows a real-world entity that is mentioned directly in the core message of the article.
+    \item The image shows a real-world entity that is closely related to, or symbolises one the entities and concepts that form the core message of the article.
+\end{enumerate}
+
+An \emph{entity} in this definition can be something of physical existence (such as a person, a building, a plane) or an event (such as a demonstration, an inauguration, a press conference).
+
+A \emph{concept} is something without physical existence that is nevertheless commonly regarded as one discrete instance, such a stock price, a presidency or the termination of a contract.
+
+The \emph{core message} of an article is the piece of newsworthy information that sums up the article in one sentence. In journalism practice, this is sometimes referred to as the "lede" or the "nut graph" of a story. (see e. g. \cite[p. 110]{Rich2015WritingMethod})
+
+As an addition to the above definition, an image is also regarded as factually wrong if it is not a photograph (but e. g. a drawing or a graphic).
 
 \subsection{Evaluation Design} \label{EvalDesign}
 
+Experiment and evaluation were carried out manually by the researcher. From the BBC corpus, a sample of 100 articles that match the following three criteria was selected:
+
+\begin{enumerate}
+    \item The original article is illustrated with a lead image by Getty. This restriction was imposed to make sure that Getty actually has a fitting image for all examined articles in its database.
+    \item The article is written in news style. This condition applies to almost every article on BBC News. But since some of the assumptions underlying the system are made based on traditional news writing style, all other types of articles (such as features or listings) had to be sorted out for evaluation. This affected six articles in total.
+    \item The article is among the 100 most recent articles to which the above conditions apply. If time is not specified, Getty's search API tends to return images from recent events first. In order to reduce the potential bias caused by this mechanism, only recently published articles were examined.
+\end{enumerate}
+
+\noindent For each selected article, a core message was formulated according to the definition given in Section \ref{EvalFacts}. These core messages answer the central questions for a news article: who, what, when, where, why and how? All examined articles with their respective core messages can be found on the CD attached to the printed version of this work.
+
+The independent variable in this experiment is the approach used for classifying the terms. The following five approaches were examined:
+
+\begin{itemize}
+    \setlength\itemsep{0em}
+    \item Statistical approach (abbreviated \emph{stat})
+    \item Machine learning approach using term frequency and first occurrence (\emph{tf+fo})
+    \item Machine learning approach using term frequency and entity category (\emph{tf+calais})
+    \item Machine learning approach using first occurrence and entity category (\emph{fo+calais})
+    \item Machine learning approach using term frequency, first occurrence and entity category (\emph{tf+fo+calais})
+\end{itemize}
+
+\noindent The dependent variable is the factual correctness of the image selection the system makes when one of the above approaches is applied. All other parameters in the system were kept constant throughout the entire experiment.
+
+For each of the 100 articles, the image selection was run with all five approaches. Each resulting image was classified manually as either "factually correct" or "factually incorrect" according to the definition given in Section \ref{EvalFacts}. If the system returned no image, a "no image" label was assigned to the respective run. A comprehensive list of examined articles, core messages, selected images and classifications can be found on the attached CD.
+
 \subsection{Evaluation Results} \label{EvalResults}
+
+\begin{figure}[t]
+    \caption{Image selection results for all approaches}
+    \centering
+    \includegraphics[width=\columnwidth]{fig-results-overview.png}
+    \label{fig:results-overview}
+\end{figure}
+
+The main finding arising from the evaluation results is that the system can not be regarded as ready for production in its current state. On average, only 37 \% of all articles got a factually correct image assigned, 54 \% had a wrong image assigned and for 9 \% of the articles the system did not find an image at all.
+
+Figure \ref{fig:results-overview} shows that the machine learning approaches performed similarly well as the statistical approach on average. However, results of the machine learning approach are significantly better when term frequency and first occurrence are both used as features: \emph{tf+fo} returned 40 \% correct images and \emph{tf+fo+calais} returned 42 \% correct images, which makes it the best performing approach in the experiment. At the other end of the spectrum ranks another machine learning approach: \emph{tf+calais} showed by far the worst performance in the experiment, selecting correct images for less than a third of all articles, having the highest rate of wrong articles of all machine learning approaches and returning no image for 14 \%. This highlights the importance of the first occurrence feature that will be examined in more detail below.
+
+Even though similar to the average machine learning approach, in direct comparison \emph{stat} ranks at the lower end of the spectrum as well, as shown in Figure \ref{fig:stat-comparison}. It has the second lowest quota of factually correct images, with only \emph{tf+calais} performing worse. Furthermore, with 59 \% it has the highest rate of wrong images. This might also be due to its high efficiency: Whereas the machine learning approaches tend to return no image more often, \emph{stat} only returned no image in 5 \% of cases. It can be assumed that it is better to return no image instead of a wrong image in news publishing, where factual correctness has a high priority. So the seemingly good result that \emph{stat} is the most effective approach must actually be interpreted as possibly problematic.
+
+\begin{figure}[h]
+    \caption{Performance of statistical approach compared to machine learning approaches}
+    \centering
+    \includegraphics[width=\columnwidth]{fig-stat-comparison.png}
+    \label{fig:stat-comparison}
+\end{figure}
+
+\begin{figure}[h]
+    \caption{Influence of features on neural network performance}
+    \centering
+    \includegraphics[width=\columnwidth]{fig-feature-influence.png}
+    \label{fig:feature-influence}
+\end{figure}
+
+\begin{figure}[h]
+    \caption{System performance per article topic}
+    \centering
+    \includegraphics[width=\columnwidth]{fig-perf-per-topic.png}
+    \label{fig:perf-per-topic}
+\end{figure}
+
+\clearpage
+
+Each of the machine learning approaches in the experiment represents a different combination of term features. This enables a direct comparison of approaches that use a certain feature to approaches that do not, indicating how powerful certain features are. Figure \ref{fig:feature-influence} shows the influence adding certain features had on the performance of the neural networks. 
+
+The most important finding here is the striking effect of the first occurrence feature: Adding it to the networks improved the results by almost 10 percentage points, from 30 \% correct images in the \emph{tf+calais} network to an average of 39,66 \% in all other networks that use first occurrence. This gives evidence to the assumption underlying this feature, namely that the position at which terms occur for the first time in a news article does say a lot about how well it is fit to describe the article's central topic.
+
+The other features do not have an effect as significant as first occurrence. Term frequency on its own seems to have almost no effect at all: Approaches with term frequency performed almost exactly as well as the approach without term frequency. However, term frequency seems to form a powerful pair with first occurrence. Networks that used both features performed better on average (41 \% correct images) than the best network that does not use the two combined (which is \emph{fo+calais} with 37 \% correct images, see Figure \ref{fig:results-overview}).
+
+At first impression, the entity category feature seems to worsen the overall performance of the networks, with only 36.3 \% correct images returned by networks that use it compared to 40 \% in the one that does not. However, it has to be noted that among the networks that use the entity category feature is the negative outlier \emph{tf+calais}. Since the effect of the missing first occurrence feature is overall stronger than the difference for entity category (9.66 percentage points compared to 3.7), it seems likely that this result is biased by the bad performance of \emph{tf+calais}. In fact, adding entity category to the already successful combination \emph{tf+fo} improved it even further, from a rate of 40 \% correct images to 42 \% (see Figure \ref{fig:results-overview}).
+
+\bigskip
+
+Splitting the set of articles into several groups of topically related articles revealed some other interesting patterns. For this purpose, articles were grouped according to the sections they appeared in on BBC News. The resulting topic groups are:
+
+\begin{itemize}
+    \setlength\itemsep{0em}
+    \item WORLD (containing articles from the "world" section)
+    \item UK NATIONAL (containing articles from "uk" and one article from "politics" that was in fact about UK politics)
+    \item UK REGIONAL (containing 13 sections representing different regions within the UK)
+    \item INTERNATIONAL (containing all sections that represent regions outside the UK, namely "asia", "australia", "europe", "latin\_america" and "us\_and\_canada")
+    \item SPECIAL INTEREST (containing topic specific sections such as "health" and "technology")
+\end{itemize}
+
+A statistical analysis of the individual groups (shown in Figure \ref{fig:perf-per-topic}) revealed, that the system performed best on SPECIAL INTEREST (48 \% correct images) and WORLD (40 \%) topics on average. It showed its worst average performance in the UK REGIONAL group (30 \%), closely followed by INTERNATIONAL (31 \%). One possible explanation for this is that the majority of images Getty offers come from the anglophone world, especially from the US. Getty is an American image agency that might not cover rural Britain and other parts of the world to the same extent as it covers the US. Queries must therefore be very precise when searching for images from these areas, a task at which the system might have failed a number of times.
+
+However, there are big differences between \emph{stat} and the machine learning approaches. Whereas the neural networks performed slightly better than the statistical approach in almost every topic group, \emph{stat} outperforms the average machine learning approach by far in articles from UK REGIONAL. When it came to British local news, the statistical approach selected almost twice as many factually correct images than the machine learning approach. In fact, this is the highest rate any approach reached on any topic.
+
+One possible explanation for this rather surprising observation is that Open Calais could not make sense of the entities occurring in local news from the UK, which could have blurred the data available for classifying the terms with neural networks. As far as it is known, Open Calais has been "trained by hundreds of Thomson Reuters' Editorial teams" \cite{ThomsonReutersAboutCalais}, i. e. the data used for training Open Calais were articles from the Thomson Reuters news collection. Most of these cover topics of world wide relevance, which means that Open Calais might not have been able to detect entities in local news correctly due to missing training data. However, this does not explain the extraordinarily high percentage of correct articles reached by the statistical approach. The reasons for this remain to be examined.
+
+\bigskip
+
+Another interesting observation arising from the analysis of different topic groups is how the entity category feature influenced the performance \emph{per topic}. As stated above, the networks performed worse in absolute numbers when entity category was added. This applies to all individual topic groups similarly, except for one: In articles from SPECIAL INTEREST, adding entity category actually improved the performance, even when counting the negative outlier \emph{tf+calais}. With entity category, the networks selected 55.5 \% factually correct images on average, without it only 40 \% of images were correct. This might be due to the fact that Open Calais is specialised on industry-related topics with entities such as companies, products and industry terms. These occur particularly often in articles from sections like "business", "technology" and "science and environment" that are all part of this group, leading to a more precise entity recognition.
 
 %______________________________________________________________________
 
@@ -498,9 +664,29 @@ For each feature combination, a separate set of 100,000 training terms from the 
 
 \section{Limitations} \label{Limits}
 
+Before turning to an interpretation of the results presented above as well as some remarks on possible next steps in Section \ref{Conclusion}, the limitations this work has faced will be summed up in the following section. These limitations affected the system design as such as well as the evaluation of its performance. Section \ref{LimitsSystem} will outline the main restrictions the presented system underlies, Section \ref{LimitsEval} will point to the constraints that were imposed on the evaluation.
+
 \subsection{System Limitations} \label{LimitsSystem}
 
+One of the big challenges in implementing the system was generating a set of data precise enough for neural networks to learn from it how to detect meaningful search terms among a huge number of meaningless terms. Defining each term that occurs somewhere in the image description as an image keyword was a workaround that performed surprisingly well - considering that image descriptions often contain several words that are not directly related to the image content, such as the photographer's name or other meta data. However, it can be assumed that there is a significant amount of noise in the data. Using properly labelled images or actual search queries - both of which are not available at the time of writing - could have improved the training data significantly.
+
+Another related issue that might have affected the classification performance is the restricted number of term features. Having to drop part-of-speech and paragraph type as features left the final proposal with only two features per term in the statistical approach and three features maximum in the machine learning approach. This is not to say that additional features would have improved the system's performance \emph{per se}, yet there is room for exploring the effects of features such as term length, the position of a term within a sentence or features describing relations to other terms. Not only time constraints prohibited the introduction of further features, but also computational limitations: A growing number of features would have increased computational complexity for training the networks significantly.
+
+One part of the system that could not be regulated at all is the Getty image search. Since Getty does not expose the algorithms responsible for querying their database, there was no information available as to how well certain search queries were suited for this specific database. Using Getty as an image database black box was a deliberate design decision intended to reduce implementation complexity and keep the proposal as use-case agnostic as possible. However, information about how queries are processed internally could have enabled more detailed improvements, especially regarding the query generation step of the image selection process.
+
+In its current state, the system always selects the first image the API returns. This is dangerous and potentially limits performance, since it leaves much of the decision to Getty's sorting algorithm and - to some extent - coincidence. Furthermore, human editors always rely on their subjective comparison of different images and select the one they think fits the article best. It can be assumed that emulating these decision processes could significantly increase the chance that correct - and maybe even visually attractive - images are selected. As seen in Section \ref{EvalFacts}, editors employ a rather fixed set of criteria during this process. Extending the system to consider these criteria, however, would mean a fundamental change to this proposal, with each criterion leaving lots of room for research on its own.
+
+Another limitation affects the semantic content of the processed articles. The system in its current state only considers those terms that occur in the article literally. It is though possible that in some cases considering synonyms would have been beneficial to the system: Sometimes a synonym might have been the better search term. And sometimes synonyms could have helped to better match article terms and image description, since it is not guaranteed that BBC and Getty use the same terminology in every case.
+
 \subsection{Research Design Limitations} \label{LimitsEval}
+
+The evaluation method applied in this work was designed to be quickly applicable for a big number of articles and approaches. It can be regarded as a first indication as to how well the approaches performed, but never should it be interpreted as a comprehensive measure for the quality of an image selection system. The major limitations are outlined below.
+
+As stated above, professionals apply a wide range of selection criteria to news images. The evaluation at hand examines the most important of them, namely factual correctness, yet still leaves out the majority of criteria that decide on the quality of an image. In order to gain better insight in how well the system performs compared to human editors, it seems feasible to extend the evaluation to other concepts such as visual attractiveness of an image, its compatibility with the headline or matching of moods between article and image. Since these concepts are neither easily definable nor quantifiable in an objective way, recruiting professional journalists as assessors would be vital for such an evaluation to succeed.
+
+What is more, it is not just image curation that plays a role in quality assessment, but also how these images are perceived. As argued in Section \ref{TheoryPerception}, images have great influence on the way readers perceive the news and the mental models they derive from them. None of this is taken account for by measuring only factual correctness of image selections. Experiments and surveys among news readers could help answering central questions arising from automating image selection: How does the proposed system change the way the news are read and perceived? How well do the selected images catch reader's attention, and how well do they improve their recall of the news? All of this are central aspects of quality that can be assessed in future research.
+
+One last limiting factor is the number of examined articles. For this work, 100 articles were evaluated with five different approaches, resulting in 500 individual classifications. This sample size is reasonable for detecting global effects. But when it comes to splitting the sample into different topic groups, a bigger sample could have increased precision especially in small topic groups (e. g. INTERNATIONAL consisted of merely 9 articles in the evaluation on hand).
 
 %______________________________________________________________________
 
@@ -508,80 +694,50 @@ For each feature combination, a separate set of 100,000 training terms from the 
 
 \section{Conclusion} \label{Conclusion}
 
-%______________________________________________________________________
+This work has proposed a system that automatically selects images for news articles by applying simple keyword extraction mechanisms to an article to generate a search query for an image database. The system was designed to be applicable in practice and uses a real-world image database as well as a sample of real-world articles, while still remaining general enough to plug in different keyword extraction methods as well as different data sources for articles and images.
 
-\iffalse
+Before the actual system was presented, a review of literature and prior research has revealed important aspects of news and image perception as well as the most influential works that led up to the design of the system. It was found that images play an important role in how news are interpreted by the readers and that their addition supports reader's recall of a story. It was therefore argued that automating this task can not only increase newsroom productivity but also help news publishers make their content more memorable and attractive. Subsequently, a summary of three influential approaches was given, highlighting aspects that inspired the design of this proposal.
 
-% Der Befehl \cleardoublepage erscheint nur vor \section, nicht vor
-% den "kleineren" Gliederungsbefehlen wie \subsection!
-\cleardoublepage % Neue rechte Seite anfangen
-\section{Example Section}
+In the following comprehensive design report, the system and all related components were outlined and all major design decisions were motivated on the basis of observations made during development. The core part of the system is an image selection pipeline that ranks the terms of an article and generates an image query from the highest ranked terms. It ranks the terms according to three characteristics: term frequency, first occurrence and entity category. Two different ranking approaches were introduced: A computationally efficient statistical approach that calculates predictions with a simple formula, and a more complex machine learning approach based on feedforward neural networks. The networks are pre-trained using a matching of article terms and image descriptions as training data.
 
-\begin{figure}%[btph]
-  %% Datei ``beispielbild.eps'' oder ``beispielbild.png'', zentriert
-  %\begin{center}\includegraphics{beispielbild}\end{center}
+In a final evaluation, an attempt was made to compare different approaches systematically according to the rate of factually correct images they select. Five approaches were compared: the statistical approach and four variations of the machine learning approach that use different combinations of the three term characteristics to rank terms. It was found that the neural networks performed slightly better than the statistical calculation on average. The best performing approach was the network that uses all three term features. First occurrence was identified to be very beneficial for the outcome of the system. Term frequency and entity category had less positive impact, yet overall they contributed to improving the system's performance. When comparing different article topics, the observation was made that the statistical approach drastically outperformed the machine learning approaches on local news, but was inferior in all other topic groups.
 
-  %% Datei auf 8cm Breite verkleinert/vergrößert
-  %\includegraphics[width=8cm]{beispielbild}
-  %% Datei auf ganze Breite des Texts vergrößert
-  %\includegraphics[width=\columnwidth]{beispielbild}
-  %% Datei auf 60% der Textbreite verkleinert/vergrößert
-  %\includegraphics[width=.6\columnwidth]{beispielbild}
-  %% Weitere Optionen (Ausschnitt, drehen etc.) in der Doku zum graphicx-Paket
+\bigskip
 
-  \begin{center}\LARGE [BILD]\end{center}
-  \caption{Bildunterschrift}
-  \label{fig:beispielbild}
-\end{figure}
+The most important upshot of this work is that the system in its present form needs more refinement to actually be used in production. With a peak performance of 42 \% factually correct images, not even counting aesthetic aspects or environmental factors such as the intended orientation, it would probably not increase productivity to a particularly high extent. However, several interesting conclusions can be drawn from the experiences made.
 
+The choice of features has proved to be valid according to the evaluation results. Combining all three has resulted in the highest factual accuracy, which indicates that they represent the right knowledge required for ranking the terms. It remains unclear, however, whether it is necessary to invest computational power in the training of neural networks or if similar results could be achieved with a statistical calculation. A direct comparison of both approaches was not possible in this work because one feature, entity category, could only be used in the machine learning approach by definition. The average results indicate though that performance does not increase significantly when neural networks are used.
 
-Siehe Abbildung \ref{fig:beispielbild} oder einschlägige Literatur, z.B.
-\cite[Seite 6]{Brill1992ATagger} oder \cite{Porter1980AnStripping}.
+Regarding individual term features, the most striking finding is the great impact of the first occurrence feature. One central outcome of this work is that the position at which a term is first mentioned in a news article plays a big role in how well it is suited as an image search term. As mentioned above, this is most likely due to the "inverted pyramid" style that puts the central information at the beginning of an article and still seems to influence present day news writing.
 
-\bigskip % Größerer Abstand zum vorherigen Absatz
-\textbf{Hinweis:} Die Verweise im generierten PDF (HTTP-Links, Verweise auf Kapitel oder Bilder) sind leicht eingefärbt. Wer das nicht will, z.B. weil es die Druckkosten erhöht, kann am Anfang des Dokuments \texttt{linkcolor} usw. auf ``black'' setzen.
+Term frequency does, of course, correlate: The earlier a term is mentioned, the higher the chances are that it is mentioned again. Surprisingly though, term frequency on its own seems to have almost no effect at all. It is only in conjunction with first occurrence that term frequency shows positive impact on the factual correctness of image selections.
 
+The conclusion for entity categories as feature is mixed: On the one hand it can be argued that entity categories actually improved the \emph{tf+fo} network, making \emph{tf+fo+calais} the most successful network. On the other hand, this improvement was slight and the average performance did even decrease when adding entity categories. It remains to be examined whether significant improvements can actually be achieved with this kind of classification.
 
-\subsection{Medien}
+Other interesting conclusions have arisen from the thematic analysis of the results: The proposed system performed best on articles from the "world" section and several special interest sections. Even though this may be caused by Getty's varying amount of coverage for different topics, this suggests that news with a regional focus are not an easy field for the system and that in its current state it is best applied in region-independent news. This does however not explain why the statistical approach performed exceedingly well just on local British news, a phenomenon that requires more detailed investigation in future research.
 
-\begin{figure}
-  \begin{center}\LARGE [BILD]\end{center}
-  \caption{Noch ein Bild}
-  \label{fig:beispielbild2}
-\end{figure}
+\bigskip
 
-\begin{itemize}
-  \item Gesellschaftliche Medien
-  \item Technische Medien
-\end{itemize}
+These conclusions point in various directions for further refinement of the system. Based on the finding in the thematic analysis, a classification of articles according to topics seems reasonable. This would enable the system to treat different topic groups in a different way - for example by using only statistical methods on local news. Open Calais could in fact be a valuable resource for this purpose: Besides the entity recognition, the service returns so called "Social Tags" that "attempt to emulate how a person would tag a specific piece of content" \cite[p. 11]{ThomsonReuters2018ThomsonGuide}. These tags could be used to determine the type of article the system deals with.
 
+As stated in Section \ref{LimitsSystem}, choosing one image from a list of query results instead of always choosing the first image could help emulate human selection behaviour in a more natural way. For this purpose, an image ranking method could be implemented that rates the images before selecting the highest rated. Inspiration could be drawn from the approaches by Joshi et al. \cite{Joshi2006TheIllustration} and Delgado et al. \cite{Delgado2010AutomatedExperience} that were introduced in Section \ref{TheoryTech} and both implement an image ranking.
 
-\subsection{Informatik}
+Section \ref{LimitsSystem} revealed that the training data used in this system might not have been precise enough for the neural networks to fully grasp what makes a good search term. One obvious way to tackle this is to collect actual search terms human editors use in image databases. This would be both time consuming and hard to implement, since it would require an integration into editor's everyday workflows or an extensive laboratory experiment. Another approach might be more feasible: Switching from feedforward neural networks to recurrent neural networks would introduce the possibility of feedback loops. The networks could then iteratively learn from feedback humans give them on their selections, for example from editors using the systems in their regular work. In doing so, they would help the networks approximate the human intuition of a good search term, hopefully leading to higher precision.
 
+Future research should furthermore examine new ways of characterising a term: Does the length of a term play a role when it comes to extracting search queries? Do other position features such as within-sentence position or within-paragraph position have a similarly big effect as first occurrence? How do neighbouring terms affect the suitability of a term as search term? And can search queries be improved by replacing terms with synonyms where applicable?
 
-\subsection{Medieninformatik}
+Further room for improvement exists when it comes to evaluating the system. As stated in Section \ref{LimitsEval}, factual correctness can be regarded as a first indication of the system's performance, but deeper investigations have to follow: How well does the system approximate the criteria professional photo editors apply when selecting images? What are their attitudes towards systems like this? Surveys and experiments with professionals can give hints towards answering these questions. How does the system influence reader's perception of the news? Does it change their perception at all? And is there a visible difference between images selected by humans and images selected by the machine? These and related questions can only be answered by collecting feedback from the affected audience.
 
-\begin{description}
-  \item[Medienwirkung:] Ein Spezialfach der Kommunikationswissenschaft. Für das erfolgreiche Studium des Anwendungsfachs Mediengestaltung ist eine künstlerische Begabung erforderlich.
-  \item[Medienwirtschaft:] Ein Spezialfach der Betriebswirtschaftslehre
-  \item[Mediengestaltung:] Ein Spezialfach der Kunstwissenschaft
-\end{description}
+Finally, creating these kinds of systems has ethical implications. It has to be debated to which extent news publishers should rely on an autonomous system like this, even if it were flawless in the execution of its task. By design, this system is not aware of the impact its selections might have on the readers. Neither does it know about possibly harmful content, nor about framing effects it could cause. Even though it only tries to imitate human behaviour, it can not be guaranteed that it will always act as wise as a human would. This work therefore strongly discourages the use of systems like this in a completely autonomous fashion. Especially in journalism, where minor mistakes can cause great harm and trust is easily lost, it seems advisable to subject automated image selection to human supervision.
 
-\subsubsection{Was Sie schon immer wissen wollten, aber nie zu fragen
-  wagten}
+\bigskip
 
-\paragraph{Überschrift}
-Diese Überschrift erscheint fettgedruckt am Anfang des Absatzes.
-
-\subsubsection{Was Sie nicht wissen wollten}
-
-Text text textextext\footnote{Oder so ähnlich}.
-
-\fi
+However, this work has shown the potential that lies in automation: Selecting an image takes seconds with the current implementation. Even if it was only used as a suggestion tool for editors, and even with its current success rate, it may be assumed that newsrooms can benefit from it. What is more, there exist various paths for further improving the system. Future research has yet to show to which extend these kinds of systems can actually augment the image selection process. But in times of increasing competition in the media sector, publishers are well advised to invest in new forms of content generation. This work and potential future continuations can be a meaningful contribution to this development.
 
 %\_____________________________________________________________________
 
 \cleardoublepage
+
 \begin{appendix}
 
 \section{Source Code} \label{AppendixCode}
@@ -610,7 +766,7 @@ The proposed system has been implemented in JavaScript for Node.js for research 
 
 \section{List of Stopwords} \label{AppendixStopwords}
 
-\emph{The character "," in the following list denotes a word separator.}
+\emph{This is the global list of stopwords that was used in the entire application. The character "," in the following list denotes a word separator.}
 
 \bigskip
 
@@ -624,7 +780,7 @@ The proposed system has been implemented in JavaScript for Node.js for research 
     \centering
     \begin{tabular}{|c|p{10cm}|}
         \hline
-        \textbf{Group}          & \textbf{Associated Entity Types} \\
+        \textbf{Entity Category}& \textbf{Associated Entity Types} \\
         \hline
         Event                   & \nohyphens{Anniversary, Date, EntertainmentAwardEvent, Holiday, PoliticalEvent, SportsEvent, SportsGame, SportsLeague, TVShow} \\
         \hline
@@ -651,6 +807,17 @@ The proposed system has been implemented in JavaScript for Node.js for research 
 \cleardoublepage
 \fancyhead[LE,RO,LO,RE]{} % Keine Kopfzeile mehr oben auf jeder Seite
 \section*{Contents of the Attached CD}
+
+\emph{The attached CD contains the following folders:}
+
+\begin{itemize}
+    \item \lstinline{/code} - the source code of the proposed system
+    \item \lstinline{/corpus} - all data collected from BBC News, Getty Images and Open Calais until submission of this work
+    \item \lstinline{/evaluation} - an overview of the evaluation results
+    \item \lstinline{/literature} - all references that were available online at the time of submission
+    \item \lstinline{/thesis} - this thesis in LaTeX and PDF format
+\end{itemize}
+
 %______________________________________________________________________
 
 \cleardoublepage
@@ -675,6 +842,6 @@ The proposed system has been implemented in JavaScript for Node.js for research 
 %\end{thebibliography}
 
 \bibliographystyle{plain}
-\bibliography{mendeley_v2}
+\bibliography{mendeley}
 
 \end{document}
