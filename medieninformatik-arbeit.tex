@@ -68,6 +68,10 @@
 
 % url formatting
 \urlstyle{same}
+
+% bilbiography
+\usepackage{multibib}
+\newcites{Refs,Urls}{References,Web References}
 %______________________________________________________________________
 
 \begin{document}
@@ -236,7 +240,7 @@ The actual keyword extraction procedure was defined as a classification task in 
 
 The complete system proposed here has been implemented for research reasons. The implementation is written in JavaScript running in a Node.js environment. The original source code can be found on the attached CD or as an open source project on the web (see Appendix \ref{AppendixCode} for a detailed description).
 
-Before turning to the actual description of the system, some remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{BeligaKeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best illustrates the document. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
+Before turning to the actual description of the system, some remarks have to be made about the use of the term "keyword": Whereas in computer linguistics this usually refers to "the terms that best describe the subject of [a] document" \cite[p. 1]{Beliga2014KeywordApproaches}, this thesis uses it to describe the terms that serve well as an image search query. "Keywords" in this thesis are therefore terms that can be used to find an image that best illustrates the document. Even though one could think of naming this procedure \emph{search term extraction}, this thesis will stick to the term \emph{keyword extraction}, emphasising that it is strongly influenced by established keyword extraction methods.
 
 \subsection{System Overview} \label{SystemOverview}
 
@@ -307,7 +311,7 @@ Processing an article written in natural language requires bringing structure to
 
 \paragraph{N-Gram Selection.} Since terms do not always consist of just one word, the preprocessor considers compounds consisting of up to four consecutive words as well, so called \emph{n-grams}. This is achieved by sliding a two, three and four word wide window over the previously generated list of words. However, only n-grams that do not overlap with a punctuation character (such as a full stop or a comma) are considered, i. e. n-grams must not exceed the borders of a clause. The n-grams are appended to the list of words.
 
-\paragraph{Stopword Removal.} Many languages have words that convey little meaning on their own and can be left out from analysis, commonly referred to as "stopwords". In English these are mainly pronouns and particles such as "he", "themselves", "by", "when". The complete list of stopwords used in this system can be found in Appendix \ref{AppendixStopwords}. The preprocesor removes all these words from the word list, if they occur individually. Additionally, it removes any n-gram that starts or ends with a stopword, a procedure inspired by Hulth \cite{HulthImprovedKnowledge}.
+\paragraph{Stopword Removal.} Many languages have words that convey little meaning on their own and can be left out from analysis, commonly referred to as "stopwords". In English these are mainly pronouns and particles such as "he", "themselves", "by", "when". The complete list of stopwords used in this system can be found in Appendix \ref{AppendixStopwords}. The preprocesor removes all these words from the word list, if they occur individually. Additionally, it removes any n-gram that starts or ends with a stopword, a procedure inspired by Hulth \cite{Hulth2003ImprovedKnowledge}.
 
 \paragraph{Stemming.} In order to enable grouping of different inflections of the same word or closely related words, a procedure called "stemming" is applied to the complete word list. This refers to the reduction of words to their linguistic root. Porter's stemming algorithm \cite{Porter1980AnStripping} for the English language has proven to be reliable and effective and was hence chosen for this step.
 
@@ -361,7 +365,7 @@ Thomson Reuters does not disclose the exact methods Open Calais uses, but it cle
 Adding Open Calais entity detection to the system enables another modification for the machine learning approaches: Since Open Calais does not only detect entities, but also assign an entity type, another term feature can be introduced. Those terms that were detected to be entities get assigned the additional feature \textbf{entity category}. This feature is meant to describe what "kind" of term one is dealing with, with the assumption in mind that some types of entities are better search terms than others (e. g. a person might be preferred to a country or an organisation's name). In fact, research has shown that the great majority of image request newspaper journalists make are aimed at named persons, things and locations. \cite[p. 106]{Westman2006ImageContext} Open Calais knows 41 different entity types. In order to group together closely related entity types and to reduce complexity, they were combined into seven entity categories: Event, HumanProtagonist, OrganizationProtagonist, Position, Location, Product and Other. The exact grouping can be found in Appendix \ref{AppendixEntcats}. These group labels are then assigned as a feature value to each affected term.
 
 \begin{table}[b]
-    \caption{Entity categories for the terms in Table \ref{table:calais-example}}
+    \caption{Entity categories for the terms in Figure \ref{table:calais-example}}
     \centering
     \begin{tabular}{|c|c|c|}
         \hline
@@ -391,7 +395,7 @@ The actual benefit of adding these labels to the list of terms was not obvious i
 \begin{quote}
     "[L]earning is the process of converting experience into expertise or knowledge."
     
-    \cite[p. 1]{Ben-David2014UnderstandingAlgorithms}
+    \cite[p. 1]{Shalev-Shwartz2014UnderstandingAlgorithms}
 \end{quote}
 
 \noindent Learning from real world observations is fundamental to one of the two approaches examined in this work, the machine learning approach. It is hence worth to discuss, which training data is necessary to gain the required knowledge, and how this data is generated in the proposed system. Referring to the quote by Ben-David above, the expertise this system is trying to gain is to distinguish between terms that are suitable for searching an image and terms that are not. So what would be the experience the system should make in order to develop this ability? Strictly speaking, it should learn from what human editors do when searching for an image. The ideal training data for the task at hand would thereby be a set of terms human editors have used for searching an image, united with another set of terms they did not use. It is immediately clear that such data is not readily available. Collecting it would take lots of time, since human editors would have to make thousands of image requests until enough data is available, not to speak of the privacy considerations such a surveillance would imply.
@@ -841,7 +845,11 @@ The proposed system has been implemented in JavaScript for Node.js for research 
 
 %\end{thebibliography}
 
-\bibliographystyle{plain}
-\bibliography{mendeley}
+\nociteRefs{*}
+\nociteUrls{*}
+\bibliographystyleRefs{plain}
+\bibliographystyleUrls{plain}
+\bibliographyRefs{bib}
+\bibliographyUrls{bib-web}
 
 \end{document}
